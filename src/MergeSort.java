@@ -39,43 +39,53 @@ public class MergeSort {
       // Create the destination (Topic or Queue)
       Destination destination = session.createQueue("Transactions");
 
-      // Create a MessageProducer from the Session to the Topic or Queue
+      // Create a MessageProducer/consumer from the Session to the Topic or Queue
       MessageProducer producer = session.createProducer(destination);
 
-      // Creating a message
-      TextMessage message = createTextMessage(session, Transaction.generateList(1000000));
-      System.out.println("Message created!");
-
-      // Tell the producer to send the message
-      producer.send(message);
-      System.out.println("Sending message to queue!");
-
-      // Generating a certain randomness for the exercise
-      Thread.sleep(new Random().nextInt(5000));
-
-      // Wait for the returning message
       MessageConsumer consumer = session.createConsumer(destination);
-      Message returnMessage = consumer.receive();
-      System.out.println("Message received!");
 
-      if (returnMessage instanceof TextMessage) {
-        TextMessage textMessage = (TextMessage) returnMessage;
-        String text = textMessage.getText();
+      // array of transactions
+      int[] transactionArray = { 1000, 10000, 100000, 1000000, 2000000, 4000000};
 
-        try {
-          List<Transaction> transactions = parseReturnMessage(text);
+      for(int transaction: transactionArray) {
+        // Creating a message
+        TextMessage message = createTextMessage(session, Transaction.generateList(transaction));
+        System.out.println("Message created!");
 
-          System.out.println("--------- RESULTS: ---------");
-          EventProfiler profiler = new EventProfiler(true);
-          benchmark(transactions, profiler);
+        // Tell the producer to send the message
+        producer.send(message);
+        System.out.println("Sending message to queue!");
 
-        } catch(JSONException e) {
-          throw new JSONException(e);
-        }
-      } else {
-        throw new IllegalArgumentException("Unexpected message " + message);
+        // Generating a certain randomness for the exercise
+        Thread.sleep(new Random().nextInt(1000));
       }
 
+      for(int transaction: transactionArray) {
+        // Wait for the returning message
+        Message returnMessage = consumer.receive();
+        System.out.println("Message received!");
+
+        if (returnMessage instanceof TextMessage) {
+          TextMessage textMessage = (TextMessage) returnMessage;
+          String text = textMessage.getText();
+
+          try {
+            List<Transaction> transactions = parseReturnMessage(text);
+
+            System.out.println("--------- RESULTS: ---------");
+            EventProfiler profiler = new EventProfiler(true);
+            benchmark(transactions, profiler);
+
+          } catch(JSONException e) {
+            throw new JSONException(e);
+          }
+        } else {
+          throw new IllegalArgumentException("Unexpected message ");
+        }
+      }
+
+
+      System.out.println("I am done, closing session now.");
       session.close();
       connection.close();
     } catch (JMSException | IOException | InterruptedException e) {
